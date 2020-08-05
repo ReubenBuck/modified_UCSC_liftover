@@ -40,7 +40,7 @@ export twoBitDirectory=$(pwd)
 
 #######################################################################
 # targetDb is the sequence you have good coordinates you want to convert
-export targetDb="myTargetSequence"
+export targetDb="CanFam3.1"
 # typical chunk size for a target sequence is 10,000,000 bases
 export targetChunkSize="10000000"
 # no need to overlap chunks, either target or query:
@@ -50,7 +50,7 @@ export chunkCountLimit="1"
 
 # queryDb is the sequence you want to convert coordinates from the target
 #    to the query
-export queryDb="myQuerySequence"
+export queryDb="canfam4"
 # typical chunk size for a query sequence is also 10,000,000 bases
 export queryChunkSize="10000000"
 
@@ -65,7 +65,7 @@ rm -fr tParts
 twoBitInfo ${twoBitDirectory}/${targetDb}.2bit stdout | sort -k2nr > ${targetDb}.chrom.sizes
 # check the usage message for this command in the kent source tree
 #   to see what all the arguments mean:
-$HOME/kent/src/hg/utils/automation/partitionSequence.pl ${targetChunkSize} \
+partitionSequence.pl ${targetChunkSize} \
    ${chunkOverlapSize} ${twoBitDirectory}/${targetDb}.2bit ${targetDb}.chrom.sizes \
    ${chunkCountLimit} \
    -lstDir=tParts > t.lst
@@ -76,7 +76,7 @@ rm -fr qParts
 twoBitInfo ${twoBitDirectory}/${queryDb}.2bit stdout | sort -k2nr > ${queryDb}.chrom.sizes
 # check the usage message for this command in the kent source tree
 #   to see what all the arguments mean:
-$HOME/kent/src/hg/utils/automation/partitionSequence.pl ${queryChunkSize} \
+partitionSequence.pl ${queryChunkSize} \
    ${chunkOverlapSize} ${twoBitDirectory}/${queryDb}.2bit ${queryDb}.chrom.sizes \
    ${chunkCountLimit} \
    -lstDir=qParts > q.lst
@@ -90,23 +90,24 @@ cd ${workDirectory}/run.blat
 #  the printout of the faSize is a line something like:
 # 23332831 bases (10 N's 23332821 real 18400480 upper 4932341 lower) in 16 sequences in 1 files
 # use the fifth field there, the 23332821 "real" number of bases:
-export realSize=`twoBitToFa ${twoBitDirectory}/${targetDb}.2bit stdout | faSize stdin | grep real | awk '{print $5}'`
+#   export realSize=`twoBitToFa ${twoBitDirectory}/${targetDb}.2bit stdout | faSize stdin | grep real | awk '{print $5}'`
 # calculate repMatch based on a proportion of the hg19 genoe size
-export repMatch=`calc \( ${realSize} / 2897316137 \) \* 1024`
+#   realSize=$(echo $realSize | cut -f1 -d" ")
+#   export repMatch=`calc \( ${realSize} / 2897316137 \) \* 1024`
 # That gives a really small number for small genomes, ignore that result
 # and simply use a repMatch of 100:
 blat ${twoBitDirectory}/${targetDb}.2bit /dev/null \
-        /dev/null -tileSize=11 -makeOoc=11.ooc -repMatch=100
+        /dev/null -tileSize=11 -makeOoc=11.ooc -repMatch=1024
 
 #######################################################################
 # Construct the result output PSL directories
 
 cd ${workDirectory}/run.blat
 mkdir ${workDirectory}/run.blat/psl
-for F in `cat t.lst`
+for F in $(cat t.lst)
 do
-  B=`basename ${F}
-  mkdir ${workDirectory}/run.blat/psl/${B}
+B=$(basename ${F})
+mkdir ${workDirectory}/run.blat/psl/${B}
 done
 
 #######################################################################
@@ -122,8 +123,9 @@ cat << EOF > template
 EOF
 
 ## construct jobList for each query chunk blat to each target chunk:
-
-gensub2 t.lst q.lst template jobList
+wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/gensub2
+chmod u+x gensub2
+./gensub2 t.lst q.lst template jobList
 
 # the resulting jobList is a listing of commands to be run which will perform
 # the blat on each specified target/query chunk pair of sequences
