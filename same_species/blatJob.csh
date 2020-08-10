@@ -20,7 +20,7 @@ if ($queryListIn:e == "lst") set queryListIn = $queryListIn
 set var = `pwd`
 echo "$var"
 
-set tmpDir = `mktemp -d -p $var doSame.blat.XXXXXX`
+set tmpDir = `mktemp -d -p $var doSame.blat.${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.XXXXXXX`
 pushd $tmpDir
 
 # We might get a .lst or a 2bit spec here -- convert to (list of) 2bit spec:
